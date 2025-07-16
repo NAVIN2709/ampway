@@ -2,8 +2,9 @@ import React, { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { db } from "../../firebase"; // 🔁 Replace with your Firebase config path
+import { db } from "../../firebase";
 import { collection, onSnapshot } from "firebase/firestore";
+import  RequestButton  from "./RequestButton";
 
 const MapComponent = () => {
   const [userPosition, setUserPosition] = useState(null);
@@ -17,7 +18,7 @@ const MapComponent = () => {
   });
 
   const carIcon = new L.Icon({
-    iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png", // 🚗 Replace with better electric car icon if needed
+    iconUrl: "https://cdn-icons-png.flaticon.com/512/744/744465.png",
     iconSize: [35, 35],
     iconAnchor: [17, 35],
   });
@@ -57,9 +58,8 @@ const MapComponent = () => {
             longitude: data.location?.longitude,
           };
         })
-        .filter((car) => car.latitude && car.longitude); // only valid entries
+        .filter((car) => car.latitude && car.longitude);
       setCars(carData);
-      console.log("Fetched cars:", carData);
     });
 
     return () => unsub();
@@ -99,6 +99,7 @@ const MapComponent = () => {
             ))}
         </MapContainer>
       )}
+      <RequestButton userPosition={userPosition} />
     </div>
   );
 };
