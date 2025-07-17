@@ -1,20 +1,30 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../firebase';
+import { supabase } from '../supabaseClient';
 
 import Home from './pages/Home';
 import Login from './pages/Login';
 
 const App = () => {
-  const [user, setUser] = useState(undefined); 
+  const [user, setUser] = useState(undefined); // undefined = loading
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser || null);
+    // Initial user fetch
+    const getCurrentUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user || null);
+    };
+
+    getCurrentUser();
+
+    // Subscribe to auth state changes
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
     });
 
-    return () => unsubscribe();
+    return () => {
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   if (user === undefined) {

@@ -2,15 +2,13 @@ import React, { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { db } from "../../firebase";
-import { collection, onSnapshot } from "firebase/firestore";
-import  RequestButton  from "./RequestButton";
+import { supabase } from "../../supabaseClient"; // ← Your initialized Supabase client
+import RequestButton from "./RequestButton";
 
 const MapComponent = () => {
   const [userPosition, setUserPosition] = useState(null);
-  const [cars, setCars] = useState(null);
+  const [cars, setCars] = useState([]);
 
-  // Marker Icons
   const userIcon = new L.Icon({
     iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
     iconSize: [25, 41],
@@ -33,11 +31,9 @@ const MapComponent = () => {
         },
         (err) => {
           console.error("Geolocation error:", err);
-          setUserPosition([10.7602, 78.8142]); // fallback: NIT Trichy
+          setUserPosition([10.7602, 78.8142]);
         },
-        {
-          enableHighAccuracy: true,
-        }
+        { enableHighAccuracy: true }
       );
     } else {
       console.warn("Geolocation not supported");
@@ -45,24 +41,49 @@ const MapComponent = () => {
     }
   }, []);
 
-  // Live Fetch Cars from Firestore
+  // Fetch cars and setup realtime subscription
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, "cars"), (snapshot) => {
-      const carData = snapshot.docs
-        .map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            name: data.carName,
-            latitude: data.location?.latitude,
-            longitude: data.location?.longitude,
-          };
-        })
-        .filter((car) => car.latitude && car.longitude);
-      setCars(carData);
-    });
+    const fetchCars = async () => {
+      const { data, error } = await supabase
+        .from("cars")
+        .select("id, car_name, latitude, longitude");
 
-    return () => unsub();
+      if (error) {
+        console.error("Error fetching cars:", error);
+        return;
+      }
+
+      const validCars = data
+        .filter((car) => car.latitude && car.longitude)
+        .map((car) => ({
+          id: car.id,
+          name: car.car_name,
+          location: {
+            latitude: car.latitude,
+            longitude: car.longitude,
+          },
+        }));
+
+      setCars(validCars);
+    };
+
+    fetchCars();
+
+    const channel = supabase
+      .channel("cars-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "cars" },
+        (payload) => {
+          console.log("Realtime Update:", payload);
+          fetchCars(); // re-fetch on insert/update/delete
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   return (
@@ -79,24 +100,21 @@ const MapComponent = () => {
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
-          {/* User Marker */}
           <Marker position={userPosition} icon={userIcon}>
             <Popup>You are here 🚶</Popup>
           </Marker>
 
-          {/* Car Markers from Firestore */}
-          {cars &&
-            cars.map((car) => (
-              <Marker
-                key={car.id}
-                position={[car.latitude, car.longitude]}
-                icon={carIcon}
-              >
-                <Popup>
-                  🚗 <strong>{car.name || "Electric Taxi"}</strong>
-                </Popup>
-              </Marker>
-            ))}
+          {cars.map((car) => (
+            <Marker
+              key={car.id}
+              position={[car.location.latitude, car.location.longitude]}
+              icon={carIcon}
+            >
+              <Popup>
+                🚗 <strong>{car.carName || "Electric Taxi"}</strong>
+              </Popup>
+            </Marker>
+          ))}
         </MapContainer>
       )}
       <RequestButton userPosition={userPosition} />
