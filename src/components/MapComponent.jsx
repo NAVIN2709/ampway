@@ -46,7 +46,7 @@ const MapComponent = () => {
     const fetchCars = async () => {
       const { data, error } = await supabase
         .from("cars")
-        .select("id, car_name, latitude, longitude");
+        .select("id, latitude, longitude");
 
       if (error) {
         console.error("Error fetching cars:", error);
@@ -57,7 +57,6 @@ const MapComponent = () => {
         .filter((car) => car.latitude && car.longitude)
         .map((car) => ({
           id: car.id,
-          name: car.car_name,
           location: {
             latitude: car.latitude,
             longitude: car.longitude,
@@ -111,7 +110,7 @@ const MapComponent = () => {
               icon={carIcon}
             >
               <Popup>
-                🚗 <strong>{car.carName || "Electric Taxi"}</strong>
+                🚗 <strong>{"Electric Taxi"}</strong>
               </Popup>
             </Marker>
           ))}
