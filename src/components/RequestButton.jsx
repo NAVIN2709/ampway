@@ -1,9 +1,43 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 
 const RequestButton = ({ userPosition }) => {
   const [rideId, setRideId] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // Fetch current user's ride if already requested
+  useEffect(() => {
+    const fetchExistingRide = async () => {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        console.error("User not authenticated:", userError);
+        return;
+      }
+
+      const { data: existingRides, error: checkError } = await supabase
+        .from("riders")
+        .select("id")
+        .eq("requested_by", user.id)
+        .eq("status", "waiting")
+        .single();
+
+      if (checkError && checkError.code !== "PGRST116") {
+        // PGRST116 = No rows found
+        console.error("Error checking existing ride:", checkError);
+        return;
+      }
+
+      if (existingRides) {
+        setRideId(existingRides.id);
+      }
+    };
+
+    fetchExistingRide();
+  }, [userPosition]);
 
   const handleButtonClick = async () => {
     setLoading(true);
@@ -24,7 +58,6 @@ const RequestButton = ({ userPosition }) => {
       return;
     }
 
-    // Get the current user
     const {
       data: { user },
       error: userError,
@@ -36,7 +69,6 @@ const RequestButton = ({ userPosition }) => {
       return;
     }
 
-    // Check if user already has a ride request with status "waiting"
     const { data: existingRides, error: checkError } = await supabase
       .from("riders")
       .select("id")
@@ -54,7 +86,6 @@ const RequestButton = ({ userPosition }) => {
       return;
     }
 
-    // Insert the ride
     const { data, error } = await supabase
       .from("riders")
       .insert([
@@ -97,9 +128,9 @@ const RequestButton = ({ userPosition }) => {
       onClick={handleButtonClick}
       disabled={loading}
       className={`absolute bottom-6 left-1/2 transform -translate-x-1/2 px-5 py-3 font-semibold rounded-full shadow-lg z-[1000] text-white transition-all duration-200
-    ${rideId ? "bg-green-600" : "bg-blue-600"}
-    ${loading ? "opacity-60 cursor-not-allowed" : "hover:scale-105"}
-  `}
+        ${rideId ? "bg-green-600" : "bg-blue-600"}
+        ${loading ? "opacity-60 cursor-not-allowed" : "hover:scale-105"}
+      `}
     >
       {loading ? (
         <span className="flex items-center gap-2">
