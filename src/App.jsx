@@ -4,6 +4,8 @@ import { supabase } from '../supabaseClient';
 
 import Home from './pages/Home';
 import Login from './pages/Login';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
 
 const App = () => {
   const [user, setUser] = useState(undefined); // undefined = loading
@@ -40,6 +42,8 @@ const App = () => {
       <div className="pb-16">
         <Routes>
           <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<Privacy />} />
           <Route path="/" element={user ? <Home /> : <Navigate to="/login" />} />
         </Routes>
       </div>
