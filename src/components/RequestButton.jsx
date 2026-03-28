@@ -142,6 +142,7 @@ const RequestButton = ({ userPosition }) => {
       setRideId(null);
       setRequestedAt(null);
       alert("Ride marked as done and removed.");
+      
     }
   };
 
