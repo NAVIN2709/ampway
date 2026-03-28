@@ -97,16 +97,9 @@ const RequestButton = ({ userPosition }) => {
   const showRequestButton = !rideId || isExpired(requestedAt);
 
   return (
-    <div className="absolute bottom-0 left-0 w-full z-[1000]">
+    <div className="absolute bottom-0 left-0 w-full z-[1000] px-4">
       {/* Bottom Sheet */}
-      <div className="bg-white text-black rounded-t-3xl p-5 shadow-2xl">
-
-        {/* Status */}
-        {!showRequestButton && (
-          <p className="text-sm text-green-600 mb-2">
-            🚗 Driver finding in progress...
-          </p>
-        )}
+      <div className="text-black rounded-3xl p-5 shadow-2xl">
 
         {/* Button */}
         <button

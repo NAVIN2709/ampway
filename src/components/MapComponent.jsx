@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { supabase } from "../../supabaseClient"; // ← Your initialized Supabase client
+import { supabase } from "../../supabaseClient";
 import RequestButton from "./RequestButton";
 
 const MapComponent = () => {
@@ -21,38 +21,26 @@ const MapComponent = () => {
     iconAnchor: [17, 35],
   });
 
-  useEffect(() => {
-    const requestNotificationPermission = async () => {
-      if ("Notification" in window) {
-        const permission = await Notification.requestPermission();
-        console.log("Notification permission:", permission);
-      }
-    };
-
-    requestNotificationPermission();
-  }, []);
-
-  // Get User Location
-  useEffect(() => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords;
-          setUserPosition([latitude, longitude]);
-        },
-        (err) => {
-          console.error("Geolocation error:", err);
-          setUserPosition([10.7602, 78.8142]);
-        },
-        { enableHighAccuracy: true },
-      );
-    } else {
-      console.warn("Geolocation not supported");
-      setUserPosition([10.7602, 78.8142]);
+  const requestLocation = () => {
+    if (!("geolocation" in navigator)) {
+      alert("Geolocation not supported");
+      return;
     }
-  }, []);
 
-  // Fetch cars and setup realtime subscription
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        setUserPosition([latitude, longitude]);
+      },
+      (err) => {
+        console.error("Geolocation error:", err);
+        alert("Please enable location access to continue.");
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
+  // 🚗 Fetch cars + realtime
   useEffect(() => {
     const fetchCars = async () => {
       const { data, error } = await supabase
@@ -84,10 +72,9 @@ const MapComponent = () => {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "cars" },
-        (payload) => {
-          console.log("Realtime Update:", payload);
-          fetchCars(); // re-fetch on insert/update/delete
-        },
+        () => {
+          fetchCars();
+        }
       )
       .subscribe();
 
@@ -98,36 +85,58 @@ const MapComponent = () => {
 
   return (
     <div className="relative w-full h-screen overflow-hidden">
-      {userPosition && (
-        <MapContainer
-          center={userPosition}
-          zoom={17}
-          scrollWheelZoom={true}
-          className="w-full h-full"
-        >
-          <TileLayer
-            attribution="&copy; OpenStreetMap contributors"
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
 
-          <Marker position={userPosition} icon={userIcon}>
-            <Popup>You are here 🚶</Popup>
-          </Marker>
+      {/* ❌ Location not granted UI */}
+      {!userPosition && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black text-white z-[2000]">
+          <p className="mb-4 text-center px-6 text-lg font-semibold">
+            Enable location to find rides 🚕
+          </p>
 
-          {cars.map((car) => (
-            <Marker
-              key={car.id}
-              position={[car.location.latitude, car.location.longitude]}
-              icon={carIcon}
-            >
-              <Popup>
-                🚗 <strong>{"Electric Taxi"}</strong>
-              </Popup>
-            </Marker>
-          ))}
-        </MapContainer>
+          <button
+            onClick={requestLocation}
+            className="bg-white text-black px-6 py-3 rounded-full font-semibold"
+          >
+            Enable Location 📍
+          </button>
+        </div>
       )}
-      <RequestButton userPosition={userPosition} />
+
+      {/* ✅ Map */}
+      {userPosition && (
+        <>
+          <MapContainer
+            center={userPosition}
+            zoom={17}
+            scrollWheelZoom={true}
+            className="w-full h-full"
+          >
+            <TileLayer
+              attribution="&copy; OpenStreetMap contributors"
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+
+            {/* User Marker */}
+            <Marker position={userPosition} icon={userIcon}>
+              <Popup>You are here 🚶</Popup>
+            </Marker>
+
+            {/* Cars */}
+            {cars.map((car) => (
+              <Marker
+                key={car.id}
+                position={[car.location.latitude, car.location.longitude]}
+                icon={carIcon}
+              >
+                <Popup>🚗 Electric Buggie</Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+
+          {/* Bottom Sheet */}
+          <RequestButton userPosition={userPosition} />
+        </>
+      )}
     </div>
   );
 };
