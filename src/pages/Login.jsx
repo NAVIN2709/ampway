@@ -69,10 +69,6 @@ const Login = () => {
           By continuing, you agree to our Terms of Service and Privacy Policy.
         </p>
       </div>
-
-      <footer className="absolute bottom-4 text-xs text-gray-600">
-        Made with ❤️ for TC Inductions
-      </footer>
     </div>
   );
 };

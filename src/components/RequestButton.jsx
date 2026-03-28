@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 
+const TWO_MINUTES_MS = 2 * 60 * 1000;
+
 const RequestButton = ({ userPosition }) => {
   const [rideId, setRideId] = useState(null);
+  const [requestedAt, setRequestedAt] = useState(null); // track timestamp
   const [loading, setLoading] = useState(false);
 
-  // Fetch current user's ride if already requested
+  // Returns true if the ride was requested more than 2 minutes ago
+  const isExpired = (timestamp) => {
+    if (!timestamp) return true;
+    return Date.now() - new Date(timestamp).getTime() > TWO_MINUTES_MS;
+  };
+
+  // Fetch current user's active ride on mount / position change
   useEffect(() => {
     const fetchExistingRide = async () => {
       const {
@@ -18,21 +27,29 @@ const RequestButton = ({ userPosition }) => {
         return;
       }
 
-      const { data: existingRides, error: checkError } = await supabase
+      const { data: existingRide, error: checkError } = await supabase
         .from("riders")
-        .select("id")
+        .select("id, requested_at")
         .eq("requested_by", user.id)
         .eq("status", "waiting")
         .single();
 
       if (checkError && checkError.code !== "PGRST116") {
-        // PGRST116 = No rows found
+        // PGRST116 = no rows found — not an error
         console.error("Error checking existing ride:", checkError);
         return;
       }
 
-      if (existingRides) {
-        setRideId(existingRides.id);
+      if (existingRide) {
+        if (isExpired(existingRide.requested_at)) {
+          // Auto-clean expired ride from DB
+          await supabase.from("riders").delete().eq("id", existingRide.id);
+          setRideId(null);
+          setRequestedAt(null);
+        } else {
+          setRideId(existingRide.id);
+          setRequestedAt(existingRide.requested_at);
+        }
       }
     };
 
@@ -69,9 +86,10 @@ const RequestButton = ({ userPosition }) => {
       return;
     }
 
+    // Safety check: no duplicate active rides
     const { data: existingRides, error: checkError } = await supabase
       .from("riders")
-      .select("id")
+      .select("id, requested_at")
       .eq("requested_by", user.id)
       .eq("status", "waiting");
 
@@ -81,18 +99,20 @@ const RequestButton = ({ userPosition }) => {
       return;
     }
 
-    if (existingRides.length > 0) {
+    const activeRide = existingRides?.find((r) => !isExpired(r.requested_at));
+    if (activeRide) {
       alert("You already have a pending ride request.");
       return;
     }
 
+    const now = new Date().toISOString();
     const { data, error } = await supabase
       .from("riders")
       .insert([
         {
           latitude: userPosition[0],
           longitude: userPosition[1],
-          requested_at: new Date().toISOString(),
+          requested_at: now,
           status: "waiting",
           requested_by: user.id,
         },
@@ -105,6 +125,7 @@ const RequestButton = ({ userPosition }) => {
       alert("Failed to request ride.");
     } else {
       setRideId(data.id);
+      setRequestedAt(data.requested_at);
       alert("Ride requested successfully!");
     }
   };
@@ -119,16 +140,20 @@ const RequestButton = ({ userPosition }) => {
       alert("Failed to complete ride.");
     } else {
       setRideId(null);
+      setRequestedAt(null);
       alert("Ride marked as done and removed.");
     }
   };
+
+  // Show "Request Ride" if no active ride OR if the existing ride has expired
+  const showRequestButton = !rideId || isExpired(requestedAt);
 
   return (
     <button
       onClick={handleButtonClick}
       disabled={loading}
-      className={`absolute bottom-6 left-1/2 transform -translate-x-1/2 px-5 py-3 font-semibold rounded-full shadow-lg z-[1000] text-white transition-all duration-200
-        ${rideId ? "bg-green-600" : "bg-blue-600"}
+      className={`absolute bottom-10 left-1/2 transform -translate-x-1/2 px-5 py-3 font-semibold rounded-full shadow-lg z-[1000] text-white transition-all duration-200
+        ${showRequestButton ? "bg-blue-600" : "bg-green-600"}
         ${loading ? "opacity-60 cursor-not-allowed" : "hover:scale-105"}
       `}
     >
@@ -156,10 +181,10 @@ const RequestButton = ({ userPosition }) => {
           </svg>
           Processing...
         </span>
-      ) : rideId ? (
-        "Done Ride"
-      ) : (
+      ) : showRequestButton ? (
         "Request Ride"
+      ) : (
+        "Done Ride"
       )}
     </button>
   );

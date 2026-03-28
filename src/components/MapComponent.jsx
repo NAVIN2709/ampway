@@ -21,6 +21,17 @@ const MapComponent = () => {
     iconAnchor: [17, 35],
   });
 
+  useEffect(() => {
+    const requestNotificationPermission = async () => {
+      if ("Notification" in window) {
+        const permission = await Notification.requestPermission();
+        console.log("Notification permission:", permission);
+      }
+    };
+
+    requestNotificationPermission();
+  }, []);
+
   // Get User Location
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -33,7 +44,7 @@ const MapComponent = () => {
           console.error("Geolocation error:", err);
           setUserPosition([10.7602, 78.8142]);
         },
-        { enableHighAccuracy: true }
+        { enableHighAccuracy: true },
       );
     } else {
       console.warn("Geolocation not supported");
@@ -76,7 +87,7 @@ const MapComponent = () => {
         (payload) => {
           console.log("Realtime Update:", payload);
           fetchCars(); // re-fetch on insert/update/delete
-        }
+        },
       )
       .subscribe();
 
