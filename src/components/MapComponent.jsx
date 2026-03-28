@@ -97,7 +97,7 @@ const MapComponent = () => {
   }, []);
 
   return (
-    <div className="w-full h-[calc(100vh)] overflow-hidden">
+    <div className="relative w-full h-screen overflow-hidden">
       {userPosition && (
         <MapContainer
           center={userPosition}
