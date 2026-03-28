@@ -32,7 +32,10 @@ const App = () => {
   if (user === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        Loading...
+        <div className="loading-spinner">
+          <div class="loader"></div>
+          <p className="mt-4 text-sm text-gray-400">Loading...</p>
+        </div>
       </div>
     );
   }

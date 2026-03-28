@@ -134,7 +134,9 @@ const MapComponent = () => {
           </MapContainer>
 
           {/* Bottom Sheet */}
-          <RequestButton userPosition={userPosition} />
+          <div className="request-button absolute bottom-15 left-0 w-full z-[1000] px-4">
+            <RequestButton userPosition={userPosition} />
+          </div>
         </>
       )}
     </div>
