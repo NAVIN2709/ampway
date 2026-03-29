@@ -8,6 +8,8 @@ import RequestButton from "./RequestButton";
 const MapComponent = () => {
   const [userPosition, setUserPosition] = useState(null);
   const [cars, setCars] = useState([]);
+  const [loadingLocation, setLoadingLocation] = useState(true);
+  const [locationError, setLocationError] = useState(false);
 
   const userIcon = new L.Icon({
     iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
@@ -21,24 +23,37 @@ const MapComponent = () => {
     iconAnchor: [17, 35],
   });
 
+  // 📍 Request location
   const requestLocation = () => {
     if (!("geolocation" in navigator)) {
       alert("Geolocation not supported");
+      setLoadingLocation(false);
+      setLocationError(true);
       return;
     }
+
+    setLoadingLocation(true);
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
         setUserPosition([latitude, longitude]);
+        setLoadingLocation(false);
+        setLocationError(false);
       },
       (err) => {
         console.error("Geolocation error:", err);
-        alert("Please enable location access to continue.");
+        setLoadingLocation(false);
+        setLocationError(true);
       },
       { enableHighAccuracy: true }
     );
   };
+
+  // ✅ AUTO fetch location on mount
+  useEffect(() => {
+    requestLocation();
+  }, []);
 
   // 🚗 Fetch cars + realtime
   useEffect(() => {
@@ -86,8 +101,15 @@ const MapComponent = () => {
   return (
     <div className="relative w-full h-screen overflow-hidden">
 
-      {/* ❌ Location not granted UI */}
-      {!userPosition && (
+      {/* 🔄 Loading Screen */}
+      {loadingLocation && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black text-white z-[2000]">
+          <p className="text-lg font-semibold">Getting your location... 📍</p>
+        </div>
+      )}
+
+      {/* ❌ Error / Permission Denied */}
+      {!loadingLocation && locationError && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black text-white z-[2000]">
           <p className="mb-4 text-center px-6 text-lg font-semibold">
             Enable location to find rides 🚕
@@ -97,13 +119,13 @@ const MapComponent = () => {
             onClick={requestLocation}
             className="bg-white text-black px-6 py-3 rounded-full font-semibold"
           >
-            Enable Location 📍
+            Retry Location 📍
           </button>
         </div>
       )}
 
       {/* ✅ Map */}
-      {userPosition && (
+      {userPosition && !loadingLocation && (
         <>
           <MapContainer
             center={userPosition}
@@ -133,7 +155,7 @@ const MapComponent = () => {
             ))}
           </MapContainer>
 
-          {/* Bottom Sheet */}
+          {/* Bottom Button */}
           <div className="request-button absolute bottom-15 left-0 w-full z-[1000] px-4">
             <RequestButton userPosition={userPosition} />
           </div>
