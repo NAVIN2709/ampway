@@ -33,7 +33,7 @@ const App = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black text-white">
         <div className="loading-spinner">
-          <div class="loader"></div>
+          <div className="loader"></div>
           <p className="mt-4 text-sm text-gray-400">Loading...</p>
         </div>
       </div>
